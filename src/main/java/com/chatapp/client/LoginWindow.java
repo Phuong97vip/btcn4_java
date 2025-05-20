@@ -139,8 +139,8 @@ public class LoginWindow extends JFrame {
             getAllUsersMsg.setSender(username);
             out.println(gson.toJson(getAllUsersMsg));
             
-            // Show chat window with first user in list
-            chatClient.showChatWindow("user1"); // You can change this to any user you want to chat with
+            // Show main chat window
+            chatClient.showMainChatWindow();
             dispose();
         } else {
             System.out.println("[LoginWindow] Operation failed: " + message);

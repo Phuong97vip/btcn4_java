@@ -24,12 +24,7 @@ public class ChatClient extends JFrame {
     private PrintWriter out;
     private BufferedReader in;
     private User currentUser;
-    private Map<String, ChatWindow> chatWindows = new HashMap<>();
-    private Map<String, GroupChatWindow> groupChatWindows = new HashMap<>();
-    private JList<String> onlineUsersList;
-    private DefaultListModel<String> onlineUsersModel;
-    private JList<String> groupsList;
-    private DefaultListModel<String> groupsModel;
+    private MainChatWindow mainChatWindow;
     private LoginWindow loginWindow;
 
     public ChatClient() {
@@ -63,9 +58,7 @@ public class ChatClient extends JFrame {
     }
 
     private void initializeClient() {
-        // Initialize models
-        onlineUsersModel = new DefaultListModel<>();
-        groupsModel = new DefaultListModel<>();
+        // No initialization needed
     }
 
     private void connectToServer() {
@@ -131,20 +124,8 @@ public class ChatClient extends JFrame {
 
     private void handleChatMessage(JsonObject response) {
         System.out.println("[ChatClient] Handling chat message");
-        String sender = response.get("sender").getAsString();
-        String content = response.get("content").getAsString();
-        String recipient = response.get("recipient").getAsString();
-        
-        // If this is a group message
-        if (response.has("isGroup") && response.get("isGroup").getAsBoolean()) {
-            if (groupChatWindows.containsKey(recipient)) {
-                groupChatWindows.get(recipient).addMessage(sender, content);
-            }
-        } else {
-            // If this is a private message
-            if (chatWindows.containsKey(sender)) {
-                chatWindows.get(sender).addMessage(sender, content);
-            }
+        if (mainChatWindow != null) {
+            mainChatWindow.handleChatMessage(response);
         }
     }
 
@@ -153,40 +134,31 @@ public class ChatClient extends JFrame {
         this.currentUser = new User(username, "");
     }
 
-    public void showChatWindow(String recipient) {
-        System.out.println("[ChatClient] Opening chat window for user: " + recipient);
-        if (!chatWindows.containsKey(recipient)) {
-            ChatWindow window = new ChatWindow(recipient, currentUser.getUsername(), out);
-            chatWindows.put(recipient, window);
-            window.setVisible(true);
-        } else {
-            chatWindows.get(recipient).setVisible(true);
+    public void showMainChatWindow() {
+        if (mainChatWindow == null) {
+            mainChatWindow = new MainChatWindow(currentUser.getUsername(), out);
         }
+        mainChatWindow.setVisible(true);
     }
 
     private void handleUserList(JsonObject response) {
         System.out.println("[ChatClient] Handling user list update");
         String usersStr = response.get("users").getAsString();
         JsonArray users = gson.fromJson(usersStr, JsonArray.class);
-        onlineUsersModel.clear();
-        for (int i = 0; i < users.size(); i++) {
-            String username = users.get(i).getAsString();
-            if (currentUser != null && !username.equals(currentUser.getUsername())) {
-                onlineUsersModel.addElement(username);
-            }
+        if (mainChatWindow != null) {
+            mainChatWindow.updateUserList(users);
         }
-        System.out.println("[ChatClient] User list updated with " + onlineUsersModel.size() + " users");
+        System.out.println("[ChatClient] User list updated with " + users.size() + " users");
     }
 
     private void handleGroupList(JsonObject response) {
         System.out.println("[ChatClient] Handling group list update");
         String groupsStr = response.get("groups").getAsString();
         JsonArray groups = gson.fromJson(groupsStr, JsonArray.class);
-        groupsModel.clear();
-        for (int i = 0; i < groups.size(); i++) {
-            groupsModel.addElement(groups.get(i).getAsString());
+        if (mainChatWindow != null) {
+            mainChatWindow.updateGroupList(groups);
         }
-        System.out.println("[ChatClient] Group list updated with " + groupsModel.size() + " groups");
+        System.out.println("[ChatClient] Group list updated with " + groups.size() + " groups");
     }
 
     public static void main(String[] args) {

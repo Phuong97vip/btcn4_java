@@ -12,6 +12,7 @@ public class Message {
     private boolean isFile;
     private String fileName;
     private String fileContent;
+    private boolean isGroup;
 
     public Message(String type, String content) {
         this.type = type;
@@ -90,5 +91,13 @@ public class Message {
 
     public void setFileContent(String fileContent) {
         this.fileContent = fileContent;
+    }
+
+    public boolean isGroup() {
+        return isGroup;
+    }
+
+    public void setGroup(boolean group) {
+        isGroup = group;
     }
 } 
