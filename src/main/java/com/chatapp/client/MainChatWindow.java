@@ -274,6 +274,7 @@ public class MainChatWindow extends JFrame {
     public void handleChatMessage(JsonObject message) {
         String sender = message.get("sender").getAsString();
         String recipient = message.get("recipient").getAsString();
+        String content = message.get("content").getAsString();
         
         // If message is for current user
         if (recipient.equals(currentUser)) {
@@ -282,10 +283,29 @@ public class MainChatWindow extends JFrame {
                 openChat(sender);
             }
             
+            // Add message to chat panel
+            ChatPanel chatPanel = chatPanels.get(sender);
+            if (chatPanel != null) {
+                chatPanel.addMessage(sender, content);
+            }
+            
             // If chat window is not active, mark as unread
-            if (chatTabs.getSelectedComponent() != chatPanels.get(sender)) {
+            if (chatTabs.getSelectedComponent() != chatPanel) {
                 unreadMessages.put(sender, true);
                 updateTabTitle(sender);
+            }
+        }
+        // If message is from current user
+        else if (sender.equals(currentUser)) {
+            // If chat window is not open, open it
+            if (!chatPanels.containsKey(recipient)) {
+                openChat(recipient);
+            }
+            
+            // Add message to chat panel
+            ChatPanel chatPanel = chatPanels.get(recipient);
+            if (chatPanel != null) {
+                chatPanel.addMessage(sender, content);
             }
         }
     }

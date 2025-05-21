@@ -1,17 +1,24 @@
 package com.chatapp.client;
 
-import com.chatapp.model.Message;
-import com.google.gson.Gson;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.border.EmptyBorder;
+
+import com.chatapp.model.Message;
+import com.google.gson.Gson;
 
 public class ChatPanel extends JPanel {
     protected static final Gson gson = new Gson();
@@ -81,7 +88,15 @@ public class ChatPanel extends JPanel {
             Message message = new Message("CHAT", messageText);
             message.setSender(currentUser);
             message.setRecipient(recipient);
+            message.setTimestamp(new Date());
+            
+            // Send message to server
             out.println(gson.toJson(message));
+            
+            // Display message in sender's chat box
+            addMessage(message);
+            
+            // Clear message field
             messageField.setText("");
         }
     }
