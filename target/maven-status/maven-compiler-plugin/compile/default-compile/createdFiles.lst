@@ -1,8 +1,5 @@
 com\chatapp\client\ChatPanel.class
-com\chatapp\database\DatabaseManager.class
-com\chatapp\client\ChatWindow.class
-com\chatapp\client\GroupChatWindow.class
-com\chatapp\client\MainChatWindow$2.class
+com\chatapp\client\FileTransferHandler$1.class
 com\chatapp\server\ChatServer.class
 com\chatapp\client\MainChatWindow.class
 com\example\btcn4_2\ChatApplication.class
@@ -13,7 +10,15 @@ com\chatapp\server\ChatServer$ClientHandler.class
 com\chatapp\client\LoginWindow.class
 com\chatapp\Main.class
 com\example\btcn4_2\ChatApplication$2.class
+com\chatapp\client\FileTransferHandler.class
+com\chatapp\model\User.class
+com\chatapp\client\FileTransferHandler$2.class
+com\chatapp\database\DatabaseManager.class
+com\chatapp\client\ChatWindow.class
+com\chatapp\client\GroupChatWindow.class
+com\chatapp\client\MainChatWindow$2.class
+com\chatapp\server\ClientConnection.class
+com\chatapp\server\FileTransferHandler.class
 com\chatapp\client\ChatClient.class
 com\chatapp\client\GroupChatPanel.class
-com\chatapp\model\User.class
 com\example\btcn4_2\ChatApplication$3.class

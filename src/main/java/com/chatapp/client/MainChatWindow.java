@@ -306,6 +306,12 @@ public class MainChatWindow extends JFrame {
             String sender = jsonMessage.get("sender").getAsString();
             String recipient = jsonMessage.get("recipient").getAsString();
             String content = jsonMessage.get("content").getAsString();
+            boolean isFile = jsonMessage.has("isFile") && jsonMessage.get("isFile").getAsBoolean();
+            String fileName = isFile ? jsonMessage.get("fileName").getAsString() : "";
+            
+            if (isFile) {
+                System.out.println("[MainChatWindow] Received file from " + sender + ": " + fileName);
+            }
             
             // If message is for current user, open chat tab if it doesn't exist
             if (recipient.equals(currentUser)) {
@@ -313,7 +319,7 @@ public class MainChatWindow extends JFrame {
                     openChat(sender);
                 }
                 ChatPanel panel = chatPanels.get(sender);
-                panel.addMessage(sender, content);
+                panel.addMessage(sender, content, isFile, fileName);
                 
                 // Mark as unread if tab is not selected
                 if (chatTabs.getSelectedComponent() != panel) {
@@ -327,7 +333,7 @@ public class MainChatWindow extends JFrame {
                     openChat(recipient);
                 }
                 ChatPanel panel = chatPanels.get(recipient);
-                panel.addMessage(sender, content);
+                panel.addMessage(sender, content, isFile, fileName);
             }
         } else if (type.equals("HISTORY")) {
             String sender = jsonMessage.get("sender").getAsString();
@@ -350,7 +356,9 @@ public class MainChatWindow extends JFrame {
                     JsonObject msg = messages.get(i).getAsJsonObject();
                     String msgSender = msg.get("sender").getAsString();
                     String msgContent = msg.get("content").getAsString();
-                    panel.addMessage(msgSender, msgContent);
+                    boolean msgIsFile = msg.has("isFile") && msg.get("isFile").getAsBoolean();
+                    String msgFileName = msgIsFile ? msg.get("fileName").getAsString() : "";
+                    panel.addMessage(msgSender, msgContent, msgIsFile, msgFileName);
                 }
             }
         }

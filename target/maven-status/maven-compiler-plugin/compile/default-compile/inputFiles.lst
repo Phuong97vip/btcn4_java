@@ -1,6 +1,7 @@
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\ChatClient.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\ChatPanel.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\ChatWindow.java
+D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\FileTransferHandler.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\GroupChatPanel.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\GroupChatWindow.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\client\LoginWindow.java
@@ -10,4 +11,6 @@ D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\Main.jav
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\model\Message.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\model\User.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\server\ChatServer.java
+D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\server\ClientConnection.java
+D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\chatapp\server\FileTransferHandler.java
 D:\University\JAVA\Project\BTCN4_2\btcn4_java\src\main\java\com\example\btcn4_2\ChatApplication.java

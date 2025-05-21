@@ -185,7 +185,25 @@ public class ChatServer {
             System.out.println("[ClientHandler] Processing chat message from " + currentUser.getUsername() + 
                 " to " + recipient);
 
-            // Save message to database first
+            // Handle file transfer
+            if (message.has("isFile") && message.get("isFile").getAsBoolean()) {
+                try {
+                    String fileName = message.get("fileName").getAsString();
+                    String fileContent = message.get("content").getAsString();
+                    
+                    // Save file on server
+                    String serverFileName = FileTransferHandler.saveFile(fileName, fileContent);
+                    System.out.println("[ClientHandler] File saved on server: " + serverFileName);
+                    
+                    // Update message with server file name
+                    message.addProperty("serverFileName", serverFileName);
+                } catch (IOException e) {
+                    System.out.println("[ClientHandler] Error saving file: " + e.getMessage());
+                    return;
+                }
+            }
+
+            // Save message to database
             dbManager.saveMessage(
                 currentUser.getId(),
                 getUserId(recipient),
@@ -193,23 +211,13 @@ public class ChatServer {
                 message.get("content").getAsString(),
                 message.has("isFile") && message.get("isFile").getAsBoolean(),
                 message.has("fileName") ? message.get("fileName").getAsString() : null,
-                message.has("fileContent") ? message.get("fileContent").getAsString() : null
+                message.has("serverFileName") ? message.get("serverFileName").getAsString() : null
             );
 
             // Forward message to recipient
             ClientHandler recipientHandler = clients.get(recipient);
             if (recipientHandler != null) {
-                // Create a new message object to avoid modifying the original
-                JsonObject forwardMessage = new JsonObject();
-                forwardMessage.addProperty("type", "CHAT");
-                forwardMessage.addProperty("content", message.get("content").getAsString());
-                forwardMessage.addProperty("sender", currentUser.getUsername());
-                forwardMessage.addProperty("recipient", recipient);
-                forwardMessage.addProperty("timestamp", message.get("timestamp").getAsString());
-                forwardMessage.addProperty("isFile", message.get("isFile").getAsBoolean());
-                forwardMessage.addProperty("isGroup", message.get("isGroup").getAsBoolean());
-                
-                recipientHandler.sendMessage(forwardMessage);
+                recipientHandler.sendMessage(message);
                 System.out.println("[ClientHandler] Message delivered to recipient: " + recipient);
             } else {
                 System.out.println("[ClientHandler] Recipient not found: " + recipient);
