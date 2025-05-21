@@ -1,0 +1,3 @@
+mvn clean package
+java -jar target/chat-application-1.0-SNAPSHOT-jar-with-dependencies.jar server
+java -jar target/chat-application-1.0-SNAPSHOT-jar-with-dependencies.jar

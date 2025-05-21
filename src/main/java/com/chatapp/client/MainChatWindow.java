@@ -1,16 +1,32 @@
 package com.chatapp.client;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.ListSelectionModel;
+import javax.swing.border.EmptyBorder;
+
 import com.chatapp.model.Message;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.PrintWriter;
-import java.util.*;
 
 public class MainChatWindow extends JFrame {
     private static final Gson gson = new Gson();
@@ -23,12 +39,14 @@ public class MainChatWindow extends JFrame {
     private DefaultListModel<String> groupListModel;
     private Map<String, ChatPanel> chatPanels;
     private Map<String, GroupChatPanel> groupChatPanels;
+    private Map<String, Boolean> unreadMessages;
 
     public MainChatWindow(String currentUser, PrintWriter out) {
         this.currentUser = currentUser;
         this.out = out;
         this.chatPanels = new HashMap<>();
         this.groupChatPanels = new HashMap<>();
+        this.unreadMessages = new HashMap<>();
 
         setTitle("Chat - " + currentUser);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -114,18 +132,126 @@ public class MainChatWindow extends JFrame {
         if (!chatPanels.containsKey(username)) {
             ChatPanel chatPanel = new ChatPanel(username, currentUser, out);
             chatPanels.put(username, chatPanel);
+            
+            // Create tab with close button
+            JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            tabPanel.setOpaque(false);
+            
+            // Add username label
+            JLabel nameLabel = new JLabel(username);
+            tabPanel.add(nameLabel);
+            
+            // Add close button
+            JButton closeButton = new JButton("×");
+            closeButton.setFont(new Font("Arial", Font.BOLD, 14));
+            closeButton.setPreferredSize(new Dimension(20, 20));
+            closeButton.setBorderPainted(false);
+            closeButton.setContentAreaFilled(false);
+            closeButton.setFocusPainted(false);
+            closeButton.addActionListener(e -> closeChat(username));
+            tabPanel.add(closeButton);
+            
+            // Add tab and set its component
             chatTabs.addTab(username, chatPanel);
+            int tabIndex = chatTabs.getTabCount() - 1;
+            chatTabs.setTabComponentAt(tabIndex, tabPanel);
+            unreadMessages.put(username, false);
+            
+            // Select the new tab
+            chatTabs.setSelectedIndex(tabIndex);
+        } else {
+            // If tab exists, just select it
+            for (int i = 0; i < chatTabs.getTabCount(); i++) {
+                if (chatTabs.getComponentAt(i) == chatPanels.get(username)) {
+                    chatTabs.setSelectedIndex(i);
+                    break;
+                }
+            }
         }
-        chatTabs.setSelectedComponent(chatPanels.get(username));
+        unreadMessages.put(username, false);
+        updateTabTitle(username);
     }
 
     private void openGroupChat(String groupName) {
         if (!groupChatPanels.containsKey(groupName)) {
             GroupChatPanel groupChatPanel = new GroupChatPanel(groupName, currentUser, out);
             groupChatPanels.put(groupName, groupChatPanel);
+            
+            // Create tab with close button
+            JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            tabPanel.setOpaque(false);
+            
+            // Add group name label
+            JLabel nameLabel = new JLabel(groupName);
+            tabPanel.add(nameLabel);
+            
+            // Add close button
+            JButton closeButton = new JButton("×");
+            closeButton.setFont(new Font("Arial", Font.BOLD, 14));
+            closeButton.setPreferredSize(new Dimension(20, 20));
+            closeButton.setBorderPainted(false);
+            closeButton.setContentAreaFilled(false);
+            closeButton.setFocusPainted(false);
+            closeButton.addActionListener(e -> closeGroupChat(groupName));
+            tabPanel.add(closeButton);
+            
+            // Add tab and set its component
             chatTabs.addTab(groupName, groupChatPanel);
+            int tabIndex = chatTabs.getTabCount() - 1;
+            chatTabs.setTabComponentAt(tabIndex, tabPanel);
+            unreadMessages.put(groupName, false);
+            
+            // Select the new tab
+            chatTabs.setSelectedIndex(tabIndex);
+        } else {
+            // If tab exists, just select it
+            for (int i = 0; i < chatTabs.getTabCount(); i++) {
+                if (chatTabs.getComponentAt(i) == groupChatPanels.get(groupName)) {
+                    chatTabs.setSelectedIndex(i);
+                    break;
+                }
+            }
         }
-        chatTabs.setSelectedComponent(groupChatPanels.get(groupName));
+        unreadMessages.put(groupName, false);
+        updateTabTitle(groupName);
+    }
+
+    private void closeChat(String username) {
+        ChatPanel panel = chatPanels.remove(username);
+        if (panel != null) {
+            chatTabs.remove(panel);
+            unreadMessages.remove(username);
+        }
+    }
+
+    private void closeGroupChat(String groupName) {
+        GroupChatPanel panel = groupChatPanels.remove(groupName);
+        if (panel != null) {
+            chatTabs.remove(panel);
+            unreadMessages.remove(groupName);
+        }
+    }
+
+    private void updateTabTitle(String title) {
+        for (int i = 0; i < chatTabs.getTabCount(); i++) {
+            Component tabComponent = chatTabs.getTabComponentAt(i);
+            if (tabComponent instanceof JPanel) {
+                JPanel tabPanel = (JPanel) tabComponent;
+                for (Component comp : tabPanel.getComponents()) {
+                    if (comp instanceof JLabel) {
+                        JLabel label = (JLabel) comp;
+                        if (label.getText().equals(title)) {
+                            if (unreadMessages.getOrDefault(title, false)) {
+                                label.setText(title + " (new)");
+                            } else {
+                                label.setText(title);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public void updateUserList(JsonArray users) {
@@ -147,16 +273,19 @@ public class MainChatWindow extends JFrame {
 
     public void handleChatMessage(JsonObject message) {
         String sender = message.get("sender").getAsString();
-        String content = message.get("content").getAsString();
         String recipient = message.get("recipient").getAsString();
-
-        if (message.has("isGroup") && message.get("isGroup").getAsBoolean()) {
-            if (groupChatPanels.containsKey(recipient)) {
-                groupChatPanels.get(recipient).addMessage(sender, content);
+        
+        // If message is for current user
+        if (recipient.equals(currentUser)) {
+            // If chat window is not open, open it
+            if (!chatPanels.containsKey(sender)) {
+                openChat(sender);
             }
-        } else {
-            if (chatPanels.containsKey(sender)) {
-                chatPanels.get(sender).addMessage(sender, content);
+            
+            // If chat window is not active, mark as unread
+            if (chatTabs.getSelectedComponent() != chatPanels.get(sender)) {
+                unreadMessages.put(sender, true);
+                updateTabTitle(sender);
             }
         }
     }
