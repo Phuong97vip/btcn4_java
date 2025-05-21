@@ -1,19 +1,19 @@
 package com.chatapp.client;
 
-import com.chatapp.model.Message;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import com.chatapp.model.User;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.net.Socket;
-import java.util.*;
-import java.util.List;
 
 public class ChatClient extends JFrame {
     private static final String SERVER_HOST = "localhost";
@@ -110,6 +110,12 @@ public class ChatClient extends JFrame {
                 case "CHAT":
                     handleChatMessage(jsonResponse);
                     break;
+                case "USER_STATUS":
+                    handleUserStatus(jsonResponse);
+                    break;
+                case "CHAT_HISTORY":
+                    handleChatHistory(jsonResponse);
+                    break;
                 default:
                     System.out.println("[ChatClient] Unknown message type: " + type);
                     break;
@@ -129,6 +135,24 @@ public class ChatClient extends JFrame {
         }
     }
 
+    private void handleUserStatus(JsonObject message) {
+        String username = message.get("username").getAsString();
+        boolean online = message.get("online").getAsBoolean();
+        System.out.println("[ChatClient] User status update: " + username + " is " + (online ? "online" : "offline"));
+        if (mainChatWindow != null) {
+            mainChatWindow.updateUserStatus(username, online);
+        }
+    }
+
+    private void handleChatHistory(JsonObject response) {
+        System.out.println("[ChatClient] Handling chat history");
+        String otherUser = response.get("otherUser").getAsString();
+        JsonArray history = response.getAsJsonArray("messages");
+        if (mainChatWindow != null) {
+            mainChatWindow.loadChatHistory(otherUser, history);
+        }
+    }
+
     public void setCurrentUser(String username) {
         System.out.println("[ChatClient] Setting current user: " + username);
         this.currentUser = new User(username, "");
@@ -143,8 +167,7 @@ public class ChatClient extends JFrame {
 
     private void handleUserList(JsonObject response) {
         System.out.println("[ChatClient] Handling user list update");
-        String usersStr = response.get("users").getAsString();
-        JsonArray users = gson.fromJson(usersStr, JsonArray.class);
+        JsonArray users = response.getAsJsonArray("users");
         if (mainChatWindow != null) {
             mainChatWindow.updateUserList(users);
         }

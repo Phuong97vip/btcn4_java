@@ -5,7 +5,7 @@ import java.awt.FlowLayout;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 import javax.swing.JButton;
@@ -19,6 +19,8 @@ import javax.swing.border.EmptyBorder;
 
 import com.chatapp.model.Message;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 public class ChatPanel extends JPanel {
     protected static final Gson gson = new Gson();
@@ -31,16 +33,21 @@ public class ChatPanel extends JPanel {
     protected JButton fileButton;
     protected JButton historyButton;
     protected JButton clearButton;
+    protected ArrayList<String> messages;
 
     public ChatPanel(String recipient, String currentUser, PrintWriter out) {
         this.recipient = recipient;
         this.currentUser = currentUser;
         this.out = out;
-
+        this.messages = new ArrayList<>();
+        
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(10, 10, 10, 10));
 
         initializeGUI();
+        
+        // Request chat history when opening chat
+        requestChatHistory();
     }
 
     protected void initializeGUI() {
@@ -94,7 +101,7 @@ public class ChatPanel extends JPanel {
             out.println(gson.toJson(message));
             
             // Display message in sender's chat box
-            addMessage(message);
+            addMessage(currentUser, messageText);
             
             // Clear message field
             messageField.setText("");
@@ -137,24 +144,32 @@ public class ChatPanel extends JPanel {
     }
 
     public void addMessage(String sender, String content) {
-        Message message = new Message("CHAT", content);
-        message.setSender(sender);
-        message.setTimestamp(new Date());
-        addMessage(message);
+        System.out.println("[ChatPanel] Adding message from " + sender + ": " + content);
+        String prefix = sender.equals(currentUser) ? "You" : sender;
+        String message = prefix + ": " + content;
+        messages.add(message);
+        chatArea.append(message + "\n");
+        chatArea.setCaretPosition(chatArea.getDocument().getLength());
     }
 
-    public void addMessage(Message message) {
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        String timestamp = sdf.format(message.getTimestamp());
-        String prefix = message.getSender().equals(currentUser) ? "You" : message.getSender();
-
-        if (message.isFile()) {
-            chatArea.append(String.format("[%s] %s sent a file: %s\n", 
-                timestamp, prefix, message.getFileName()));
-        } else {
-            chatArea.append(String.format("[%s] %s: %s\n", 
-                timestamp, prefix, message.getContent()));
+    public void loadChatHistory(JsonArray history) {
+        System.out.println("[ChatPanel] Loading chat history for " + recipient);
+        chatArea.setText("");
+        messages.clear();
+        
+        for (int i = 0; i < history.size(); i++) {
+            JsonObject msg = history.get(i).getAsJsonObject();
+            String sender = msg.get("sender").getAsString();
+            String content = msg.get("content").getAsString();
+            addMessage(sender, content);
         }
-        chatArea.setCaretPosition(chatArea.getDocument().getLength());
+    }
+
+    private void requestChatHistory() {
+        JsonObject request = new JsonObject();
+        request.addProperty("type", "GET_CHAT_HISTORY");
+        request.addProperty("otherUser", recipient);
+        request.addProperty("sender", currentUser);
+        out.println(gson.toJson(request));
     }
 } 

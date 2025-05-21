@@ -1,16 +1,24 @@
 package com.chatapp.server;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.chatapp.database.DatabaseManager;
 import com.chatapp.model.Message;
 import com.chatapp.model.User;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatServer {
     private static final int PORT = 5000;
@@ -87,6 +95,9 @@ public class ChatServer {
                 case "CHAT":
                     handleChat(jsonMessage);
                     break;
+                case "GET_CHAT_HISTORY":
+                    handleGetChatHistory(jsonMessage);
+                    break;
                 case "GROUP_CREATE":
                     handleGroupCreate(jsonMessage);
                     break;
@@ -135,6 +146,20 @@ public class ChatServer {
                 response.addProperty("message", "Login successful");
                 response.addProperty("userId", user.getId());
                 sendResponse(response);
+
+                // Send status of all online users to the new user
+                for (String onlineUser : clients.keySet()) {
+                    if (!onlineUser.equals(username)) {
+                        JsonObject statusUpdate = new JsonObject();
+                        statusUpdate.addProperty("type", "USER_STATUS");
+                        statusUpdate.addProperty("username", onlineUser);
+                        statusUpdate.addProperty("online", true);
+                        sendMessage(statusUpdate);
+                    }
+                }
+
+                // Broadcast new user's status to all clients
+                broadcastUserStatus(username, true);
                 broadcastUserList();
             } else {
                 System.out.println("[ClientHandler] Login failed for user: " + username);
@@ -150,20 +175,11 @@ public class ChatServer {
                 return;
             }
 
-            System.out.println("[ClientHandler] Processing chat message from " + currentUser.getUsername() + 
-                " to " + message.get("recipient"));
-
             String recipient = message.get("recipient").getAsString();
-            ClientHandler recipientHandler = clients.get(recipient);
-            if (recipientHandler != null) {
-                message.addProperty("sender", currentUser.getUsername());
-                recipientHandler.sendMessage(message);
-                System.out.println("[ClientHandler] Message delivered to recipient: " + recipient);
-            } else {
-                System.out.println("[ClientHandler] Recipient not found: " + recipient);
-            }
+            System.out.println("[ClientHandler] Processing chat message from " + currentUser.getUsername() + 
+                " to " + recipient);
 
-            // Save message to database
+            // Save message to database first
             dbManager.saveMessage(
                 currentUser.getId(),
                 getUserId(recipient),
@@ -173,6 +189,42 @@ public class ChatServer {
                 message.has("fileName") ? message.get("fileName").getAsString() : null,
                 message.has("fileContent") ? message.get("fileContent").getAsString() : null
             );
+
+            // Forward message to recipient
+            ClientHandler recipientHandler = clients.get(recipient);
+            if (recipientHandler != null) {
+                // Create a new message object to avoid modifying the original
+                JsonObject forwardMessage = new JsonObject();
+                forwardMessage.addProperty("type", "CHAT");
+                forwardMessage.addProperty("content", message.get("content").getAsString());
+                forwardMessage.addProperty("sender", currentUser.getUsername());
+                forwardMessage.addProperty("recipient", recipient);
+                forwardMessage.addProperty("timestamp", message.get("timestamp").getAsString());
+                forwardMessage.addProperty("isFile", message.get("isFile").getAsBoolean());
+                forwardMessage.addProperty("isGroup", message.get("isGroup").getAsBoolean());
+                
+                recipientHandler.sendMessage(forwardMessage);
+                System.out.println("[ClientHandler] Message delivered to recipient: " + recipient);
+            } else {
+                System.out.println("[ClientHandler] Recipient not found: " + recipient);
+            }
+        }
+
+        private void handleGetChatHistory(JsonObject message) {
+            if (currentUser == null) {
+                System.out.println("[ClientHandler] Chat history request rejected - no authenticated user");
+                return;
+            }
+
+            String otherUser = message.get("otherUser").getAsString();
+            System.out.println("[ClientHandler] Getting chat history between " + currentUser.getUsername() + " and " + otherUser);
+
+            List<Message> history = dbManager.getChatHistory(currentUser.getId(), getUserId(otherUser));
+            JsonObject response = new JsonObject();
+            response.addProperty("type", "CHAT_HISTORY");
+            response.addProperty("otherUser", otherUser);
+            response.add("messages", gson.toJsonTree(history));
+            sendMessage(response);
         }
 
         private void handleGroupCreate(JsonObject message) {
@@ -233,11 +285,15 @@ public class ChatServer {
 
         private void handleGetAllUsers() {
             System.out.println("[ClientHandler] Getting all users");
-            List<String> users = DatabaseManager.getInstance().getAllUsers();
+            List<String> users = dbManager.getAllUsers();
             JsonObject response = new JsonObject();
             response.addProperty("type", "USER_LIST");
-            response.addProperty("users", gson.toJson(users));
-            out.println(gson.toJson(response));
+            JsonArray userArray = new JsonArray();
+            for (String username : users) {
+                userArray.add(username);
+            }
+            response.add("users", userArray);
+            sendMessage(response);
             System.out.println("[ClientHandler] Sent all users list");
         }
 
@@ -254,7 +310,11 @@ public class ChatServer {
         private void cleanup() {
             if (currentUser != null) {
                 System.out.println("[ClientHandler] Cleaning up connection for user: " + currentUser.getUsername());
-                clients.remove(currentUser.getUsername());
+                String username = currentUser.getUsername();
+                clients.remove(username);
+                
+                // Broadcast user status to all clients
+                broadcastUserStatus(username, false);
                 broadcastUserList();
             }
             try {
@@ -274,13 +334,28 @@ public class ChatServer {
             }
             return -1;
         }
+
+        private void broadcastUserStatus(String username, boolean online) {
+            JsonObject statusUpdate = new JsonObject();
+            statusUpdate.addProperty("type", "USER_STATUS");
+            statusUpdate.addProperty("username", username);
+            statusUpdate.addProperty("online", online);
+
+            for (ClientHandler handler : clients.values()) {
+                handler.sendMessage(statusUpdate);
+            }
+        }
     }
 
     private void broadcastUserList() {
         System.out.println("[ChatServer] Broadcasting user list update");
         JsonObject message = new JsonObject();
         message.addProperty("type", "USER_LIST");
-        message.addProperty("users", gson.toJson(new ArrayList<>(clients.keySet())));
+        JsonArray userArray = new JsonArray();
+        for (String username : clients.keySet()) {
+            userArray.add(username);
+        }
+        message.add("users", userArray);
         broadcast(message);
     }
 

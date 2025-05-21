@@ -40,6 +40,7 @@ public class MainChatWindow extends JFrame {
     private Map<String, ChatPanel> chatPanels;
     private Map<String, GroupChatPanel> groupChatPanels;
     private Map<String, Boolean> unreadMessages;
+    private Map<String, Boolean> userOnlineStatus;
 
     public MainChatWindow(String currentUser, PrintWriter out) {
         this.currentUser = currentUser;
@@ -47,6 +48,7 @@ public class MainChatWindow extends JFrame {
         this.chatPanels = new HashMap<>();
         this.groupChatPanels = new HashMap<>();
         this.unreadMessages = new HashMap<>();
+        this.userOnlineStatus = new HashMap<>();
 
         setTitle("Chat - " + currentUser);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -129,16 +131,19 @@ public class MainChatWindow extends JFrame {
     }
 
     private void openChat(String username) {
-        if (!chatPanels.containsKey(username)) {
-            ChatPanel chatPanel = new ChatPanel(username, currentUser, out);
-            chatPanels.put(username, chatPanel);
+        // Remove the "● " or "○ " prefix if present
+        String cleanUsername = username.replaceFirst("^[●○]\\s*", "");
+        
+        if (!chatPanels.containsKey(cleanUsername)) {
+            ChatPanel chatPanel = new ChatPanel(cleanUsername, currentUser, out);
+            chatPanels.put(cleanUsername, chatPanel);
             
             // Create tab with close button
             JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             tabPanel.setOpaque(false);
             
             // Add username label
-            JLabel nameLabel = new JLabel(username);
+            JLabel nameLabel = new JLabel(cleanUsername);
             tabPanel.add(nameLabel);
             
             // Add close button
@@ -148,28 +153,28 @@ public class MainChatWindow extends JFrame {
             closeButton.setBorderPainted(false);
             closeButton.setContentAreaFilled(false);
             closeButton.setFocusPainted(false);
-            closeButton.addActionListener(e -> closeChat(username));
+            closeButton.addActionListener(e -> closeChat(cleanUsername));
             tabPanel.add(closeButton);
             
             // Add tab and set its component
-            chatTabs.addTab(username, chatPanel);
+            chatTabs.addTab(cleanUsername, chatPanel);
             int tabIndex = chatTabs.getTabCount() - 1;
             chatTabs.setTabComponentAt(tabIndex, tabPanel);
-            unreadMessages.put(username, false);
+            unreadMessages.put(cleanUsername, false);
             
             // Select the new tab
             chatTabs.setSelectedIndex(tabIndex);
         } else {
             // If tab exists, just select it
             for (int i = 0; i < chatTabs.getTabCount(); i++) {
-                if (chatTabs.getComponentAt(i) == chatPanels.get(username)) {
+                if (chatTabs.getComponentAt(i) == chatPanels.get(cleanUsername)) {
                     chatTabs.setSelectedIndex(i);
                     break;
                 }
             }
         }
-        unreadMessages.put(username, false);
-        updateTabTitle(username);
+        unreadMessages.put(cleanUsername, false);
+        updateTabTitle(cleanUsername);
     }
 
     private void openGroupChat(String groupName) {
@@ -255,11 +260,15 @@ public class MainChatWindow extends JFrame {
     }
 
     public void updateUserList(JsonArray users) {
+        System.out.println("[MainChatWindow] Updating user list with " + users.size() + " users");
         userListModel.clear();
         for (int i = 0; i < users.size(); i++) {
             String username = users.get(i).getAsString();
             if (!username.equals(currentUser)) {
-                userListModel.addElement(username);
+                boolean isOnline = userOnlineStatus.getOrDefault(username, false);
+                String displayName = isOnline ? "● " + username : "○ " + username;
+                userListModel.addElement(displayName);
+                System.out.println("[MainChatWindow] Added user to list: " + username + " (online: " + isOnline + ")");
             }
         }
     }
@@ -307,6 +316,32 @@ public class MainChatWindow extends JFrame {
             if (chatPanel != null) {
                 chatPanel.addMessage(sender, content);
             }
+        }
+    }
+
+    public void updateUserStatus(String username, boolean online) {
+        System.out.println("[MainChatWindow] Updating status for user: " + username + ", online: " + online);
+        userOnlineStatus.put(username, online);
+        
+        // Update display name in the list
+        for (int i = 0; i < userListModel.size(); i++) {
+            String displayName = userListModel.get(i);
+            if (displayName.endsWith(username)) {
+                String newDisplayName = online ? "● " + username : "○ " + username;
+                userListModel.set(i, newDisplayName);
+                break;
+            }
+        }
+    }
+
+    public void loadChatHistory(String username, JsonArray history) {
+        System.out.println("[MainChatWindow] Loading chat history for " + username);
+        if (!chatPanels.containsKey(username)) {
+            openChat(username);
+        }
+        ChatPanel chatPanel = chatPanels.get(username);
+        if (chatPanel != null) {
+            chatPanel.loadChatHistory(history);
         }
     }
 } 
