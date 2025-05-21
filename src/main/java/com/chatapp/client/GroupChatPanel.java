@@ -1,17 +1,11 @@
 package com.chatapp.client;
 
-import com.chatapp.model.Message;
-import com.google.gson.Gson;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+
+import com.chatapp.model.Message;
+import com.google.gson.Gson;
 
 public class GroupChatPanel extends ChatPanel {
     private static final Gson gson = new Gson();
@@ -49,7 +43,7 @@ public class GroupChatPanel extends ChatPanel {
     }
 
     @Override
-    protected void showHistory() {
+    protected void loadChatHistory() {
         Message historyMsg = new Message("GROUP_HISTORY", "");
         historyMsg.setSender(currentUser);
         historyMsg.setRecipient(groupName);

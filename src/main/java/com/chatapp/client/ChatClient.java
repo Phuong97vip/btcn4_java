@@ -1,19 +1,19 @@
 package com.chatapp.client;
 
-import com.chatapp.model.Message;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import com.chatapp.model.User;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.net.Socket;
-import java.util.*;
-import java.util.List;
 
 public class ChatClient extends JFrame {
     private static final String SERVER_HOST = "localhost";
@@ -110,6 +110,9 @@ public class ChatClient extends JFrame {
                 case "CHAT":
                     handleChatMessage(jsonResponse);
                     break;
+                case "HISTORY":
+                    handleHistoryMessage(jsonResponse);
+                    break;
                 default:
                     System.out.println("[ChatClient] Unknown message type: " + type);
                     break;
@@ -119,6 +122,13 @@ public class ChatClient extends JFrame {
             if (loginWindow != null) {
                 loginWindow.handleResponse(jsonResponse);
             }
+        }
+    }
+
+    private void handleHistoryMessage(JsonObject response) {
+        System.out.println("[ChatClient] Handling history message");
+        if (mainChatWindow != null) {
+            mainChatWindow.handleChatMessage(response);
         }
     }
 

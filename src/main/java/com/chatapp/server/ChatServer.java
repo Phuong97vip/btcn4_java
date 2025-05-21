@@ -1,16 +1,23 @@
 package com.chatapp.server;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.chatapp.database.DatabaseManager;
 import com.chatapp.model.Message;
 import com.chatapp.model.User;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatServer {
     private static final int PORT = 5000;
@@ -95,6 +102,9 @@ public class ChatServer {
                     break;
                 case "GET_ALL_USERS":
                     handleGetAllUsers();
+                    break;
+                case "HISTORY":
+                    handleHistory(jsonMessage);
                     break;
                 default:
                     System.out.println("[ClientHandler] Unknown message type: " + type);
@@ -239,6 +249,32 @@ public class ChatServer {
             response.addProperty("users", gson.toJson(users));
             out.println(gson.toJson(response));
             System.out.println("[ClientHandler] Sent all users list");
+        }
+
+        private void handleHistory(JsonObject message) {
+            if (currentUser == null) {
+                System.out.println("[ClientHandler] History request rejected - no authenticated user");
+                return;
+            }
+
+            String sender = message.get("sender").getAsString();
+            String recipient = message.get("recipient").getAsString();
+            
+            // Get chat history from database
+            List<Message> history = dbManager.getChatHistory(
+                currentUser.getId(),
+                getUserId(recipient)
+            );
+
+            // Create response with history messages
+            JsonObject response = new JsonObject();
+            response.addProperty("type", "HISTORY");
+            response.addProperty("sender", sender);
+            response.addProperty("recipient", recipient);
+            response.add("messages", gson.toJsonTree(history));
+            
+            // Send response back to client
+            sendMessage(response);
         }
 
         private void sendMessage(JsonObject message) {

@@ -8,6 +8,7 @@ import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.PrintWriter;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -217,17 +218,37 @@ public class MainChatWindow extends JFrame {
     }
 
     private void closeChat(String username) {
-        ChatPanel panel = chatPanels.remove(username);
-        if (panel != null) {
-            chatTabs.remove(panel);
+        // Find the tab index
+        int tabIndex = -1;
+        for (int i = 0; i < chatTabs.getTabCount(); i++) {
+            if (chatTabs.getComponentAt(i) == chatPanels.get(username)) {
+                tabIndex = i;
+                break;
+            }
+        }
+        
+        // Remove tab if found
+        if (tabIndex != -1) {
+            chatTabs.removeTabAt(tabIndex);
+            chatPanels.remove(username);
             unreadMessages.remove(username);
         }
     }
 
     private void closeGroupChat(String groupName) {
-        GroupChatPanel panel = groupChatPanels.remove(groupName);
-        if (panel != null) {
-            chatTabs.remove(panel);
+        // Find the tab index
+        int tabIndex = -1;
+        for (int i = 0; i < chatTabs.getTabCount(); i++) {
+            if (chatTabs.getComponentAt(i) == groupChatPanels.get(groupName)) {
+                tabIndex = i;
+                break;
+            }
+        }
+        
+        // Remove tab if found
+        if (tabIndex != -1) {
+            chatTabs.removeTabAt(tabIndex);
+            groupChatPanels.remove(groupName);
             unreadMessages.remove(groupName);
         }
     }
@@ -271,41 +292,62 @@ public class MainChatWindow extends JFrame {
         }
     }
 
-    public void handleChatMessage(JsonObject message) {
-        String sender = message.get("sender").getAsString();
-        String recipient = message.get("recipient").getAsString();
-        String content = message.get("content").getAsString();
-        
-        // If message is for current user
-        if (recipient.equals(currentUser)) {
-            // If chat window is not open, open it
-            if (!chatPanels.containsKey(sender)) {
-                openChat(sender);
-            }
+    public void handleChatMessage(JsonObject jsonMessage) {
+        String type = jsonMessage.get("type").getAsString();
+        if (type.equals("CHAT")) {
+            String sender = jsonMessage.get("sender").getAsString();
+            String recipient = jsonMessage.get("recipient").getAsString();
+            String content = jsonMessage.get("content").getAsString();
             
-            // Add message to chat panel
-            ChatPanel chatPanel = chatPanels.get(sender);
-            if (chatPanel != null) {
-                chatPanel.addMessage(sender, content);
+            // If message is for current user, open chat tab if it doesn't exist
+            if (recipient.equals(currentUser)) {
+                if (!chatPanels.containsKey(sender)) {
+                    openChat(sender);
+                }
+                ChatPanel panel = chatPanels.get(sender);
+                panel.addMessage(sender, content);
+                
+                // Mark as unread if tab is not selected
+                if (chatTabs.getSelectedComponent() != panel) {
+                    unreadMessages.put(sender, true);
+                    updateTabTitle(sender);
+                }
             }
+            // If message is from current user, add to our chat box
+            else if (sender.equals(currentUser)) {
+                if (!chatPanels.containsKey(recipient)) {
+                    openChat(recipient);
+                }
+                ChatPanel panel = chatPanels.get(recipient);
+                panel.addMessage(sender, content);
+            }
+        } else if (type.equals("HISTORY")) {
+            String sender = jsonMessage.get("sender").getAsString();
+            String recipient = jsonMessage.get("recipient").getAsString();
+            JsonArray messages = jsonMessage.getAsJsonArray("messages");
             
-            // If chat window is not active, mark as unread
-            if (chatTabs.getSelectedComponent() != chatPanel) {
-                unreadMessages.put(sender, true);
-                updateTabTitle(sender);
-            }
-        }
-        // If message is from current user
-        else if (sender.equals(currentUser)) {
-            // If chat window is not open, open it
-            if (!chatPanels.containsKey(recipient)) {
-                openChat(recipient);
-            }
-            
-            // Add message to chat panel
-            ChatPanel chatPanel = chatPanels.get(recipient);
-            if (chatPanel != null) {
-                chatPanel.addMessage(sender, content);
+            // If history is for current user, open chat tab and add messages
+            if (recipient.equals(currentUser) || sender.equals(currentUser)) {
+                String otherUser = recipient.equals(currentUser) ? sender : recipient;
+                if (!chatPanels.containsKey(otherUser)) {
+                    openChat(otherUser);
+                }
+                ChatPanel panel = chatPanels.get(otherUser);
+                
+                // Clear existing messages
+                panel.clearChat();
+                
+                // Add each message from history
+                for (int i = 0; i < messages.size(); i++) {
+                    JsonObject msg = messages.get(i).getAsJsonObject();
+                    String msgSender = msg.get("sender").getAsString();
+                    String msgContent = msg.get("content").getAsString();
+                    
+                    Message message = new Message("CHAT", msgContent);
+                    message.setSender(msgSender);
+                    message.setTimestamp(new Date()); // Use current time for display
+                    panel.addMessage(message);
+                }
             }
         }
     }
