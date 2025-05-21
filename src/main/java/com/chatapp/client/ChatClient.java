@@ -123,7 +123,7 @@ public class ChatClient extends JFrame {
         } else {
             // Forward login/register responses to LoginWindow
             if (loginWindow != null) {
-                loginWindow.handleResponse(jsonResponse);
+                loginWindow.handleServerResponse(jsonResponse);
             }
         }
     }

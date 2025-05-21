@@ -1,13 +1,23 @@
 package com.chatapp.client;
 
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.io.PrintWriter;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+
 import com.chatapp.model.Message;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.PrintWriter;
 
 public class LoginWindow extends JFrame {
     private static final Gson gson = new Gson();
@@ -80,41 +90,47 @@ public class LoginWindow extends JFrame {
         mainPanel.add(buttonPanel, gbc);
 
         // Add action listeners
-        loginButton.addActionListener(e -> handleLogin());
-        registerButton.addActionListener(e -> handleRegister());
-        passwordField.addActionListener(e -> handleLogin());
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            if (!username.isEmpty() && !password.isEmpty()) {
+                handleLogin(username, password);
+            } else {
+                JOptionPane.showMessageDialog(this, "Please enter both username and password");
+            }
+        });
+        registerButton.addActionListener(e -> {
+            String username = usernameField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            if (!username.isEmpty() && !password.isEmpty()) {
+                handleRegister(username, password);
+            } else {
+                JOptionPane.showMessageDialog(this, "Please enter both username and password");
+            }
+        });
+        passwordField.addActionListener(e -> {
+            String username = usernameField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            if (!username.isEmpty() && !password.isEmpty()) {
+                handleLogin(username, password);
+            } else {
+                JOptionPane.showMessageDialog(this, "Please enter both username and password");
+            }
+        });
 
         add(mainPanel);
         System.out.println("[LoginWindow] GUI components initialized successfully");
     }
 
-    private void handleLogin() {
-        String username = usernameField.getText().trim();
-        String password = new String(passwordField.getPassword());
-
-        if (username.isEmpty() || password.isEmpty()) {
-            System.out.println("[LoginWindow] Login attempt failed - empty username or password");
-            JOptionPane.showMessageDialog(this, "Please enter both username and password");
-            return;
-        }
-
+    private void handleLogin(String username, String password) {
         System.out.println("[LoginWindow] Attempting to login user: " + username);
-        Message message = new Message("LOGIN", password);
-        message.setSender(username);
-        out.println(gson.toJson(message));
+        Message loginMsg = new Message("LOGIN", password);
+        loginMsg.setSender(username);
+        out.println(gson.toJson(loginMsg));
         System.out.println("[LoginWindow] Login request sent to server");
     }
 
-    private void handleRegister() {
-        String username = usernameField.getText().trim();
-        String password = new String(passwordField.getPassword());
-
-        if (username.isEmpty() || password.isEmpty()) {
-            System.out.println("[LoginWindow] Registration attempt failed - empty username or password");
-            JOptionPane.showMessageDialog(this, "Please enter both username and password");
-            return;
-        }
-
+    private void handleRegister(String username, String password) {
         System.out.println("[LoginWindow] Attempting to register user: " + username);
         Message message = new Message("REGISTER", password);
         message.setSender(username);
@@ -122,26 +138,25 @@ public class LoginWindow extends JFrame {
         System.out.println("[LoginWindow] Registration request sent to server");
     }
 
-    public void handleResponse(JsonObject response) {
+    public void handleServerResponse(JsonObject response) {
         System.out.println("[LoginWindow] Received response from server: " + response.toString());
         String status = response.get("status").getAsString();
         String message = response.get("message").getAsString();
 
         if (status.equals("success")) {
             System.out.println("[LoginWindow] Operation successful: " + message);
-            String username = usernameField.getText().trim();
-            
-            // Set current user
-            chatClient.setCurrentUser(username);
-            
-            // Request user list
-            Message getAllUsersMsg = new Message("GET_ALL_USERS", "");
-            getAllUsersMsg.setSender(username);
-            out.println(gson.toJson(getAllUsersMsg));
-            
-            // Show main chat window
-            chatClient.showMainChatWindow();
-            dispose();
+            if (message.equals("Registration successful")) {
+                // After successful registration, automatically login
+                String username = usernameField.getText().trim();
+                String password = new String(passwordField.getPassword());
+                handleLogin(username, password);
+            } else {
+                // Normal login success
+                String username = usernameField.getText().trim();
+                chatClient.setCurrentUser(username);
+                chatClient.showMainChatWindow();
+                dispose();
+            }
         } else {
             System.out.println("[LoginWindow] Operation failed: " + message);
             JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
