@@ -128,6 +128,13 @@ public class ChatClient extends JFrame {
         }
     }
 
+    private void handleHistoryMessage(JsonObject response) {
+        System.out.println("[ChatClient] Handling history message");
+        if (mainChatWindow != null) {
+            mainChatWindow.handleChatMessage(response);
+        }
+    }
+
     private void handleChatMessage(JsonObject response) {
         System.out.println("[ChatClient] Handling chat message");
         if (mainChatWindow != null) {

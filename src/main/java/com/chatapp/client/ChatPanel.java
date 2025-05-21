@@ -31,7 +31,6 @@ public class ChatPanel extends JPanel {
     protected JTextField messageField;
     protected JButton sendButton;
     protected JButton fileButton;
-    protected JButton historyButton;
     protected JButton clearButton;
     protected ArrayList<String> messages;
 
@@ -67,12 +66,10 @@ public class ChatPanel extends JPanel {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         sendButton = new JButton("Send");
         fileButton = new JButton("Send File");
-        historyButton = new JButton("History");
         clearButton = new JButton("Clear");
 
         buttonsPanel.add(sendButton);
         buttonsPanel.add(fileButton);
-        buttonsPanel.add(historyButton);
         buttonsPanel.add(clearButton);
 
         inputPanel.add(buttonsPanel, BorderLayout.SOUTH);
@@ -85,8 +82,14 @@ public class ChatPanel extends JPanel {
         sendButton.addActionListener(e -> sendMessage());
         messageField.addActionListener(e -> sendMessage());
         fileButton.addActionListener(e -> sendFile());
-        historyButton.addActionListener(e -> showHistory());
         clearButton.addActionListener(e -> clearChat());
+    }
+
+    protected void loadChatHistory() {
+        Message historyMsg = new Message("HISTORY", "");
+        historyMsg.setSender(currentUser);
+        historyMsg.setRecipient(recipient);
+        out.println(gson.toJson(historyMsg));
     }
 
     protected void sendMessage() {
@@ -130,13 +133,6 @@ public class ChatPanel extends JPanel {
         message.setFileName(file.getName());
         message.setFileContent(content);
         out.println(gson.toJson(message));
-    }
-
-    protected void showHistory() {
-        Message historyMsg = new Message("HISTORY", "");
-        historyMsg.setSender(currentUser);
-        historyMsg.setRecipient(recipient);
-        out.println(gson.toJson(historyMsg));
     }
 
     protected void clearChat() {
