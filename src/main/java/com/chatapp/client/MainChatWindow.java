@@ -21,6 +21,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import com.chatapp.model.Message;
@@ -281,16 +282,26 @@ public class MainChatWindow extends JFrame {
 
     public void updateUserList(JsonArray users) {
         System.out.println("[MainChatWindow] Updating user list with " + users.size() + " users");
-        userListModel.clear();
-        for (int i = 0; i < users.size(); i++) {
-            String username = users.get(i).getAsString();
-            if (!username.equals(currentUser)) {
-                boolean isOnline = userOnlineStatus.getOrDefault(username, false);
-                String displayName = isOnline ? "● " + username : "○ " + username;
+        SwingUtilities.invokeLater(() -> {
+            userListModel.clear();
+            for (int i = 0; i < users.size(); i++) {
+                JsonObject userObj = users.get(i).getAsJsonObject();
+                String username = userObj.get("username").getAsString();
+                boolean online = userObj.get("online").getAsBoolean();
+                
+                // Skip current user
+                if (username.equals(currentUser)) {
+                    continue;
+                }
+                
+                String displayName = (online ? "● " : "○ ") + username;
                 userListModel.addElement(displayName);
-                System.out.println("[MainChatWindow] Added user to list: " + username + " (online: " + isOnline + ")");
+                System.out.println("[MainChatWindow] Added user to list: " + username + " (online: " + online + ")");
             }
-        }
+            userList.setModel(userListModel);
+            userList.revalidate();
+            userList.repaint();
+        });
     }
 
     public void updateGroupList(JsonArray groups) {

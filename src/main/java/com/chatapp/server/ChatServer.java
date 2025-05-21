@@ -129,6 +129,19 @@ public class ChatServer {
                 System.out.println("[ClientHandler] Registration successful for user: " + username);
                 response.addProperty("status", "success");
                 response.addProperty("message", "Registration successful");
+                
+                // Send status of all online users to the new user
+                for (String onlineUser : clients.keySet()) {
+                    JsonObject statusUpdate = new JsonObject();
+                    statusUpdate.addProperty("type", "USER_STATUS");
+                    statusUpdate.addProperty("username", onlineUser);
+                    statusUpdate.addProperty("online", true);
+                    sendMessage(statusUpdate);
+                }
+
+                // Broadcast new user's status to all clients
+                broadcastUserStatus(username, true);
+                broadcastUserList();
             } else {
                 System.out.println("[ClientHandler] Registration failed for user: " + username);
                 response.addProperty("status", "error");
@@ -310,9 +323,15 @@ public class ChatServer {
             JsonObject response = new JsonObject();
             response.addProperty("type", "USER_LIST");
             JsonArray userArray = new JsonArray();
+            
+            // Create user objects with online status
             for (String username : users) {
-                userArray.add(username);
+                JsonObject userObj = new JsonObject();
+                userObj.addProperty("username", username);
+                userObj.addProperty("online", clients.containsKey(username));
+                userArray.add(userObj);
             }
+            
             response.add("users", userArray);
             sendMessage(response);
             System.out.println("[ClientHandler] Sent all users list");
@@ -399,9 +418,18 @@ public class ChatServer {
         JsonObject message = new JsonObject();
         message.addProperty("type", "USER_LIST");
         JsonArray userArray = new JsonArray();
-        for (String username : clients.keySet()) {
-            userArray.add(username);
+        
+        // Get all users from database
+        List<String> allUsers = dbManager.getAllUsers();
+        
+        // Create user objects with online status
+        for (String username : allUsers) {
+            JsonObject userObj = new JsonObject();
+            userObj.addProperty("username", username);
+            userObj.addProperty("online", clients.containsKey(username));
+            userArray.add(userObj);
         }
+        
         message.add("users", userArray);
         broadcast(message);
     }
