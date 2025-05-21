@@ -136,7 +136,15 @@ public class ChatPanel extends JPanel {
     }
 
     protected void clearChat() {
+        // Send delete request to server
+        Message deleteMsg = new Message("DELETE_MESSAGES", "");
+        deleteMsg.setSender(currentUser);
+        deleteMsg.setRecipient(recipient);
+        out.println(gson.toJson(deleteMsg));
+        
+        // Clear local chat area
         chatArea.setText("");
+        messages.clear();
     }
 
     public void addMessage(String sender, String content) {

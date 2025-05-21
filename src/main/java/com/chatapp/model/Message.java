@@ -1,6 +1,8 @@
 package com.chatapp.model;
 
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Message {
     private String type;
@@ -13,11 +15,13 @@ public class Message {
     private String fileName;
     private String fileContent;
     private boolean isGroup;
+    private Set<String> deleteUsers; // Track which users have deleted this message
 
     public Message(String type, String content) {
         this.type = type;
         this.content = content;
         this.timestamp = new Date();
+        this.deleteUsers = new HashSet<>();
     }
 
     // Getters and Setters
@@ -99,5 +103,21 @@ public class Message {
 
     public void setGroup(boolean group) {
         isGroup = group;
+    }
+
+    public Set<String> getDeleteUsers() {
+        return deleteUsers;
+    }
+
+    public void setDeleteUsers(Set<String> deleteUsers) {
+        this.deleteUsers = deleteUsers;
+    }
+
+    public void addDeleteUser(String username) {
+        this.deleteUsers.add(username);
+    }
+
+    public boolean isDeletedByUser(String username) {
+        return this.deleteUsers.contains(username);
     }
 } 

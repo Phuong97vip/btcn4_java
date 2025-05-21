@@ -1,11 +1,20 @@
 package com.chatapp.database;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import com.chatapp.model.Message;
 import com.chatapp.model.User;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class DatabaseManager {
     private static DatabaseManager instance;
@@ -51,9 +60,18 @@ public class DatabaseManager {
                 "is_file BOOLEAN DEFAULT 0," +
                 "file_name TEXT," +
                 "file_content TEXT," +
+                "delete_users TEXT," +
                 "FOREIGN KEY (sender_id) REFERENCES users(id)," +
                 "FOREIGN KEY (recipient_id) REFERENCES users(id)" +
                 ")");
+
+            // Check if delete_users column exists, if not add it
+            try {
+                stmt.executeQuery("SELECT delete_users FROM messages LIMIT 1");
+            } catch (SQLException e) {
+                System.out.println("[DatabaseManager] Adding delete_users column to messages table");
+                stmt.execute("ALTER TABLE messages ADD COLUMN delete_users TEXT");
+            }
 
             // Groups table
             stmt.execute("CREATE TABLE IF NOT EXISTS groups (" +
@@ -192,20 +210,49 @@ public class DatabaseManager {
         }
     }
 
-    public List<Message> getChatHistory(int userId1, int userId2) {
-        List<Message> messages = new ArrayList<>();
-        try {
-            PreparedStatement stmt = connection.prepareStatement(
-                "SELECT * FROM messages WHERE " +
-                "(sender_id = ? AND recipient_id = ?) OR " +
-                "(sender_id = ? AND recipient_id = ?) " +
-                "ORDER BY timestamp");
-            stmt.setInt(1, userId1);
-            stmt.setInt(2, userId2);
-            stmt.setInt(3, userId2);
-            stmt.setInt(4, userId1);
-            ResultSet rs = stmt.executeQuery();
+    public void markMessagesAsDeleted(int userId, int otherUserId) {
+        String sql = "UPDATE messages SET delete_users = CASE " +
+                    "WHEN delete_users IS NULL THEN ? " +
+                    "ELSE delete_users || ',' || ? END " +
+                    "WHERE (sender_id = ? AND recipient_id = ?) OR " +
+                    "(sender_id = ? AND recipient_id = ?)";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            String userIdStr = String.valueOf(userId);
+            pstmt.setString(1, userIdStr);
+            pstmt.setString(2, userIdStr);
+            pstmt.setInt(3, userId);
+            pstmt.setInt(4, otherUserId);
+            pstmt.setInt(5, otherUserId);
+            pstmt.setInt(6, userId);
+            
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
+    public List<Message> getChatHistory(int userId, int otherUserId) {
+        List<Message> messages = new ArrayList<>();
+        String sql = "SELECT * FROM messages WHERE " +
+                    "((sender_id = ? AND recipient_id = ?) OR " +
+                    "(sender_id = ? AND recipient_id = ?)) " +
+                    "AND (delete_users IS NULL OR delete_users NOT LIKE ?) " +
+                    "ORDER BY timestamp ASC";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            String userIdStr = String.valueOf(userId);
+            pstmt.setInt(1, userId);
+            pstmt.setInt(2, otherUserId);
+            pstmt.setInt(3, otherUserId);
+            pstmt.setInt(4, userId);
+            pstmt.setString(5, "%" + userIdStr + "%");
+            
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 Message message = new Message("CHAT", rs.getString("content"));
                 message.setSender(getUsername(rs.getInt("sender_id")));
@@ -214,12 +261,18 @@ public class DatabaseManager {
                 message.setFile(rs.getBoolean("is_file"));
                 message.setFileName(rs.getString("file_name"));
                 message.setFileContent(rs.getString("file_content"));
+                
+                // Set delete users
+                String deleteUsers = rs.getString("delete_users");
+                if (deleteUsers != null) {
+                    Set<String> deleteUsersSet = new HashSet<>(Arrays.asList(deleteUsers.split(",")));
+                    message.setDeleteUsers(deleteUsersSet);
+                }
+                
                 messages.add(message);
             }
-            rs.close();
-            stmt.close();
         } catch (SQLException e) {
-            System.out.println("[DatabaseManager] Error getting chat history: " + e.getMessage());
+            e.printStackTrace();
         }
         return messages;
     }
@@ -242,5 +295,9 @@ public class DatabaseManager {
             System.out.println("[DatabaseManager] Error getting username: " + e.getMessage());
         }
         return null;
+    }
+
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection("jdbc:sqlite:chat.db");
     }
 } 

@@ -98,6 +98,9 @@ public class ChatServer {
                 case "GET_CHAT_HISTORY":
                     handleGetChatHistory(jsonMessage);
                     break;
+                case "DELETE_MESSAGES":
+                    handleDeleteMessages(jsonMessage);
+                    break;
                 case "GROUP_CREATE":
                     handleGroupCreate(jsonMessage);
                     break;
@@ -213,6 +216,20 @@ public class ChatServer {
             }
         }
 
+        private void handleDeleteMessages(JsonObject message) {
+            if (currentUser == null) {
+                System.out.println("[ClientHandler] Delete messages request rejected - no authenticated user");
+                return;
+            }
+
+            String sender = message.get("sender").getAsString();
+            String recipient = message.get("recipient").getAsString();
+            System.out.println("[ClientHandler] Processing delete messages request from " + sender + " for chat with " + recipient);
+
+            // Mark all messages in this chat as deleted for the current user
+            dbManager.markMessagesAsDeleted(currentUser.getId(), getUserId(recipient));
+        }
+
         private void handleGetChatHistory(JsonObject message) {
             if (currentUser == null) {
                 System.out.println("[ClientHandler] Chat history request rejected - no authenticated user");
@@ -222,6 +239,7 @@ public class ChatServer {
             String otherUser = message.get("otherUser").getAsString();
             System.out.println("[ClientHandler] Getting chat history between " + currentUser.getUsername() + " and " + otherUser);
 
+            // Get chat history excluding messages deleted by current user
             List<Message> history = dbManager.getChatHistory(currentUser.getId(), getUserId(otherUser));
             JsonObject response = new JsonObject();
             response.addProperty("type", "CHAT_HISTORY");
