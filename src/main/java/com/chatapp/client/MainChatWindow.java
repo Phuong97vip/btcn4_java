@@ -8,7 +8,6 @@ import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.PrintWriter;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -351,11 +350,7 @@ public class MainChatWindow extends JFrame {
                     JsonObject msg = messages.get(i).getAsJsonObject();
                     String msgSender = msg.get("sender").getAsString();
                     String msgContent = msg.get("content").getAsString();
-                    
-                    Message message = new Message("CHAT", msgContent);
-                    message.setSender(msgSender);
-                    message.setTimestamp(new Date()); // Use current time for display
-                    panel.addMessage(message);
+                    panel.addMessage(msgSender, msgContent);
                 }
             }
         }
